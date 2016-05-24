@@ -84,7 +84,7 @@
 #define FLASH_OPERR    (1 << 1) /* Operation error */
 #define FLASH_EOP      (1 << 0) /* End of operation */
 
-#define FLASH_ERROR (FLASH_PGSERR | FLASH_PGSERR | FLASH_PGAERR | FLASH_WRPERR | FLASH_OPERR)
+#define FLASH_ERROR (FLASH_PGSERR | FLASH_SIZERR | FLASH_PGSERR | FLASH_PGAERR | FLASH_WRPERR | FLASH_OPERR)
 
 /* STM32_FLASH_OBR bit definitions (reading) */
 
@@ -187,6 +187,7 @@ static int stm32l4_wait_status_busy(struct flash_bank *bank, int timeout)
 		/* If this operation fails, we ignore it and report the original
 		 * retval
 		 */
+		LOG_DEBUG("Flash errors detected (CR: 0x%" PRIx32 ").", status);
 		target_write_u32(target, stm32l4_get_flash_reg(bank, STM32_FLASH_SR),
 				status & FLASH_ERROR);
 	}
@@ -238,6 +239,11 @@ static int stm32l4_unlock_option_reg(struct target *target)
 
 	if ((ctrl & FLASH_OPTLOCK) == 0)
 		return ERROR_OK;
+
+	/* In order to unlock the options, the flash must first be unlocked. */
+	retval = stm32l4_unlock_reg(target);
+	if (retval != ERROR_OK)
+		return retval;
 
 	/* unlock option registers */
 	retval = target_write_u32(target, STM32_FLASH_OPTKEYR, OPTKEY1);
@@ -504,17 +510,18 @@ static int stm32l4_write_block(struct flash_bank *bank, const uint8_t *buffer,
 
 	init_reg_param(&reg_params[0], "r0", 32, PARAM_IN_OUT);	/* buffer start, status (out) */
 	init_reg_param(&reg_params[1], "r1", 32, PARAM_OUT);	/* buffer end */
-	init_reg_param(&reg_params[2], "r2", 32, PARAM_OUT);	/* target address */
+	init_reg_param(&reg_params[2], "r2", 32, PARAM_IN_OUT);	/* target address */
 	init_reg_param(&reg_params[3], "r3", 32, PARAM_OUT);	/* count (double word-64bit) */
 	init_reg_param(&reg_params[4], "r4", 32, PARAM_OUT);	/* flash base */
 
 	buf_set_u32(reg_params[0].value, 0, 32, source->address);
 	buf_set_u32(reg_params[1].value, 0, 32, source->address + source->size);
 	buf_set_u32(reg_params[2].value, 0, 32, address);
+	/* Count is half words, so 4 of them is the 8 byte block needed by the hardware. */
 	buf_set_u32(reg_params[3].value, 0, 32, count / 4);
 	buf_set_u32(reg_params[4].value, 0, 32, STM32_FLASH_BASE);
 
-	retval = target_run_flash_async_algorithm(target, buffer, count, 2,
+	retval = target_run_flash_async_algorithm(target, buffer, count / 4, 8,
 			0, NULL,
 			5, reg_params,
 			source->address, source->size,
@@ -525,12 +532,13 @@ static int stm32l4_write_block(struct flash_bank *bank, const uint8_t *buffer,
 		LOG_ERROR("error executing stm32l4 flash write algorithm");
 
 		uint32_t error = buf_get_u32(reg_params[0].value, 0, 32) & FLASH_ERROR;
+		address = buf_get_u32(reg_params[2].value, 0, 32);
 
 		if (error & FLASH_WRPERR)
 			LOG_ERROR("flash memory write protected");
 
 		if (error != 0) {
-			LOG_ERROR("flash write failed = %08" PRIx32, error);
+			LOG_ERROR("flash write failed = %08" PRIx32 " at address %08" PRIx32, error, address);
 			/* Clear but report errors */
 			target_write_u32(target, STM32_FLASH_SR, error);
 			retval = ERROR_FAIL;
@@ -803,6 +811,7 @@ static int stm32l4_mass_erase(struct flash_bank *bank, uint32_t action)
 {
 	int retval;
 	struct target *target = bank->target;
+	uint32_t flash_cr;
 
 	if (target->state != TARGET_HALTED) {
 		LOG_ERROR("Target not halted");
@@ -813,14 +822,25 @@ static int stm32l4_mass_erase(struct flash_bank *bank, uint32_t action)
 	if (retval != ERROR_OK)
 		return retval;
 
-	/* mass erase flash memory */
-	retval = target_write_u32(
-		target, stm32l4_get_flash_reg(bank, STM32_FLASH_CR), action);
+	retval = target_read_u32(target, stm32l4_get_flash_reg(bank, STM32_FLASH_CR), &flash_cr);
 	if (retval != ERROR_OK)
 		return retval;
+
+	flash_cr |= action;
+
+	retval = stm32l4_wait_status_busy(bank,  FLASH_ERASE_TIMEOUT);
+	if (retval != ERROR_OK)
+		return retval;
+
+	/* mass erase flash memory */
 	retval = target_write_u32(
-		target, stm32l4_get_flash_reg(bank, STM32_FLASH_CR),
-		action | FLASH_STRT);
+		target, stm32l4_get_flash_reg(bank, STM32_FLASH_CR), flash_cr);
+	if (retval != ERROR_OK)
+		return retval;
+
+	flash_cr |= FLASH_STRT;
+	retval = target_write_u32(
+		target, stm32l4_get_flash_reg(bank, STM32_FLASH_CR), flash_cr);
 	if (retval != ERROR_OK)
 		return retval;
 
@@ -828,12 +848,15 @@ static int stm32l4_mass_erase(struct flash_bank *bank, uint32_t action)
 	if (retval != ERROR_OK)
 		return retval;
 
+	/* Clear out the erase and start bits, for future register accesses. */
+	flash_cr &= ~(FLASH_MER1 | FLASH_MER2 | FLASH_STRT);
+	retval = target_write_u32(
+		target, stm32l4_get_flash_reg(bank, STM32_FLASH_CR), flash_cr);
+
 	retval = target_write_u32(
 		target, stm32l4_get_flash_reg(bank, STM32_FLASH_CR), FLASH_LOCK);
-	if (retval != ERROR_OK)
-		return retval;
 
-	return ERROR_OK;
+	return retval;
 }
 
 COMMAND_HANDLER(stm32l4_handle_mass_erase_command)
