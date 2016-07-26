@@ -408,12 +408,27 @@ static int swd_select(struct command_context *ctx)
 
 static int swd_init(struct command_context *ctx)
 {
+	enum reset_types jtag_reset_config = jtag_get_reset_config();
 	struct target *target = get_current_target(ctx);
 	struct arm *arm = target_to_arm(target);
 	struct adiv5_dap *dap = arm->dap;
 	/* Force the DAP's ops vector for SWD mode.
 	 * messy - is there a better way? */
 	arm->dap->ops = &swd_dap_ops;
+
+	/* some targets enable us to connect with srst asserted */
+	if (jtag_reset_config & RESET_CNCT_UNDER_SRST) {
+		if (jtag_reset_config & RESET_SRST_NO_GATING) {
+			swd_add_reset(1);
+		}
+		else {
+			LOG_WARNING("\'srst_nogate\' reset_config option is required");
+		}
+	}
+	else {
+		/* Release reset in case it was enabled in the config file. */
+		swd_add_reset(0);
+	}
 
 	return swd_connect(dap);
 }
