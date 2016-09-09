@@ -8,6 +8,8 @@
  *   Copyright (C) 2008 by Spencer Oliver                                  *
  *   spen@spen-soft.co.uk                                                  *
  *                                                                         *
+ *   Copyright (C) 2016 Motorola Mobility LLC                              *
+ *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
  *   the Free Software Foundation; either version 2 of the License, or     *
@@ -316,19 +318,23 @@ static int cortex_m_examine_debug_reason(struct target *target)
 
 	/* THIS IS NOT GOOD, TODO - better logic for detection of debug state reason
 	 * only check the debug reason if we don't know it already */
-
-	if ((target->debug_reason != DBG_REASON_DBGRQ)
-		&& (target->debug_reason != DBG_REASON_SINGLESTEP)) {
-		if (cortex_m->nvic_dfsr & DFSR_BKPT) {
-			target->debug_reason = DBG_REASON_BREAKPOINT;
-			if (cortex_m->nvic_dfsr & DFSR_DWTTRAP)
-				target->debug_reason = DBG_REASON_WPTANDBKPT;
-		} else if (cortex_m->nvic_dfsr & DFSR_DWTTRAP)
-			target->debug_reason = DBG_REASON_WATCHPOINT;
-		else if (cortex_m->nvic_dfsr & DFSR_VCATCH)
-			target->debug_reason = DBG_REASON_BREAKPOINT;
-		else	/* EXTERNAL, HALTED */
-			target->debug_reason = DBG_REASON_UNDEFINED;
+	if (!(cortex_m->dcb_dhcsr & S_HALT)) {
+		target->debug_reason = DBG_REASON_NOTHALTED;
+	}
+	else {
+		if ((target->debug_reason != DBG_REASON_DBGRQ)
+			&& (target->debug_reason != DBG_REASON_SINGLESTEP)) {
+			if (cortex_m->nvic_dfsr & DFSR_BKPT) {
+				target->debug_reason = DBG_REASON_BREAKPOINT;
+				if (cortex_m->nvic_dfsr & DFSR_DWTTRAP)
+					target->debug_reason = DBG_REASON_WPTANDBKPT;
+			} else if (cortex_m->nvic_dfsr & DFSR_DWTTRAP)
+				target->debug_reason = DBG_REASON_WATCHPOINT;
+			else if (cortex_m->nvic_dfsr & DFSR_VCATCH)
+				target->debug_reason = DBG_REASON_BREAKPOINT;
+			else	/* EXTERNAL, HALTED */
+				target->debug_reason = DBG_REASON_UNDEFINED;
+		}
 	}
 
 	return ERROR_OK;
@@ -2017,6 +2023,10 @@ int cortex_m_examine(struct target *target)
 			cortex_m->dwt_num_comp);
 	}
 
+	retval = mem_ap_read_atomic_u32(armv7m->debug_ap, DCB_DHCSR, &cortex_m->dcb_dhcsr);
+	if ((retval == ERROR_OK) && (!(cortex_m->dcb_dhcsr & S_HALT))) {
+		target->debug_reason = DBG_REASON_NOTHALTED;
+	}
 	return ERROR_OK;
 }
 
