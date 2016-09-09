@@ -4,6 +4,8 @@
  *                                                                         *
  *   Copyright (C) 2009 by David Brownell                                  *
  *                                                                         *
+ *   Copyright (C) 2016 Motorola Mobility LLC                              *
+ *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
  *   the Free Software Foundation; either version 2 of the License, or     *
@@ -2734,19 +2736,29 @@ static int evaluate_ifthen_thumb(uint16_t opcode, uint32_t address,
 				 struct arm_instruction *instruction)
 {
 	unsigned cond = (opcode >> 4) & 0x0f;
-	char *x = "", *y = "", *z = "";
+	unsigned firstcond_bit0 = cond & 0x01;
+	unsigned mask = opcode & 0x0f;
+	char conds[] = "   ";
+	size_t n_conds = ARRAY_SIZE(conds)-1;
 
-	if (opcode & 0x01)
-		z = (opcode & 0x02) ? "T" : "E";
-	if (opcode & 0x03)
-		y = (opcode & 0x04) ? "T" : "E";
-	if (opcode & 0x07)
-		x = (opcode & 0x08) ? "T" : "E";
+	/* Find the first condition which is always a 1. */
+	while (((mask & 0x01) == 0) && (n_conds > 0)) {
+		n_conds--;
+		mask >>= 1;
+	}
+	while (n_conds > 0) {
+		n_conds--;
+		mask >>= 1;
+		if (firstcond_bit0 == (mask & 0x01))
+			conds[n_conds] = 'T';
+		else
+			conds[n_conds] = 'F';
+	}
 
 	snprintf(instruction->text, 128,
-			"0x%8.8" PRIx32 "  0x%4.4x    \tIT%s%s%s\t%s",
+			"0x%8.8" PRIx32 "  0x%4.4x    \tIT%s\t%s",
 			address, opcode,
-			x, y, z, arm_condition_strings[cond]);
+			conds, arm_condition_strings[cond]);
 
 	/* NOTE:  strictly speaking, the next 1-4 instructions should
 	 * now be displayed with the relevant conditional suffix...
