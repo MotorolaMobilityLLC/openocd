@@ -1,6 +1,8 @@
 /***************************************************************************
  *   Copyright (C) 2009 Zachary T Welch <zw@superlucidity.net>             *
  *                                                                         *
+ *   Copyright (C) 2016 Motorola Mobility LLC                              *
+ *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
  *   the Free Software Foundation; either version 2 of the License, or     *
@@ -39,6 +41,7 @@ extern struct flash_driver em357_flash;
 extern struct flash_driver faux_flash;
 extern struct flash_driver fm3_flash;
 extern struct flash_driver fm4_flash;
+extern struct flash_driver hsbspi_flash;
 extern struct flash_driver jtagspi_flash;
 extern struct flash_driver kinetis_flash;
 extern struct flash_driver kinetis_ke_flash;
@@ -60,6 +63,7 @@ extern struct flash_driver stm32f1x_flash;
 extern struct flash_driver stm32f2x_flash;
 extern struct flash_driver stm32lx_flash;
 extern struct flash_driver stm32l4x_flash;
+extern struct flash_driver stm32spi_flash;
 extern struct flash_driver stmsmi_flash;
 extern struct flash_driver str7x_flash;
 extern struct flash_driver str9x_flash;
@@ -92,6 +96,7 @@ static struct flash_driver *flash_drivers[] = {
 	&fm3_flash,
 	&fm4_flash,
 	&jtagspi_flash,
+	&hsbspi_flash,
 	&kinetis_flash,
 	&kinetis_ke_flash,
 	&lpc2000_flash,
@@ -112,6 +117,7 @@ static struct flash_driver *flash_drivers[] = {
 	&stm32f2x_flash,
 	&stm32lx_flash,
 	&stm32l4x_flash,
+	&stm32spi_flash,
 	&stmsmi_flash,
 	&str7x_flash,
 	&str9x_flash,

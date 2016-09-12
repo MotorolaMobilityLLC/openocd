@@ -5,6 +5,8 @@
  *   Copyright (C) 2010 by Antonio Borneo                                  *
  *   borneo.antonio@gmail.com                                              *
  *                                                                         *
+ *   Copyright (C) 2016 Motorola Mobility LLC                              *
+ *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
  *   the Free Software Foundation; either version 2 of the License, or     *
@@ -53,6 +55,7 @@ extern const struct flash_device flash_devices[];
 #define SPIFLASH_READ_ID		0x9F /* Read Flash Identification */
 #define SPIFLASH_READ_STATUS	0x05 /* Read Status Register */
 #define SPIFLASH_WRITE_ENABLE	0x06 /* Write Enable */
+#define SPIFLASH_WRITE_DISABLE  0x04 /* Write Disable */
 #define SPIFLASH_PAGE_PROGRAM	0x02 /* Page Program */
 #define SPIFLASH_FAST_READ		0x0B /* Fast Read */
 #define SPIFLASH_READ			0x03 /* Normal Read */

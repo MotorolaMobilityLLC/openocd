@@ -25,6 +25,8 @@ NOR_DRIVERS = \
 	faux.c \
 	fm3.c \
 	fm4.c \
+	genspi.c \
+	hsbspi.c \
 	jtagspi.c \
 	kinetis.c \
 	kinetis_ke.c \
@@ -49,6 +51,7 @@ NOR_DRIVERS = \
 	stm32f2x.c \
 	stm32lx.c \
 	stm32l4x.c \
+	stm32spi.c \
 	str7x.c \
 	str9x.c \
 	str9xpec.c \

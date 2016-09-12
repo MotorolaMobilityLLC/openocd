@@ -5,6 +5,8 @@
  *   Copyright (C) 2010 by Antonio Borneo                                  *
  *   borneo.antonio@gmail.com                                              *
  *                                                                         *
+ *   Copyright (C) 2016 Motorola Mobility LLC                              *
+ *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
  *   the Free Software Foundation; either version 2 of the License, or     *
@@ -74,6 +76,8 @@ const struct flash_device flash_devices[] = {
 	FLASH_ID("win w25q80bv",   0xd8, 0xc7, 0x001440ef, 0x100, 0x10000, 0x100000),
 	FLASH_ID("win w25q32fv",   0xd8, 0xc7, 0x001640ef, 0x100, 0x10000, 0x400000),
 	FLASH_ID("win w25q32dw",   0xd8, 0xc7, 0x001660ef, 0x100, 0x10000, 0x400000),
+	FLASH_ID("win w25q40bw",   0x20, 0xc7, 0x001350ef, 0x100, 0x1000,  0x800000),
+	FLASH_ID("win w25q40ew",   0x20, 0xc7, 0x001360ef, 0x100, 0x1000,  0x800000),
 	FLASH_ID("win w25q64cv",   0xd8, 0xc7, 0x001740ef, 0x100, 0x10000, 0x800000),
 	FLASH_ID("win w25q128fv",  0xd8, 0xc7, 0x001840ef, 0x100, 0x10000, 0x1000000),
 	FLASH_ID("gd gd25q20",     0x20, 0xc7, 0x00c84012, 0x100, 0x1000,  0x80000),
