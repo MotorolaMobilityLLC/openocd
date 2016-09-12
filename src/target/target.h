@@ -14,6 +14,8 @@
  *   Copyright (C) ST-Ericsson SA 2011                                     *
  *   michel.jaouen@stericsson.com : smp minimum support                    *
  *                                                                         *
+ *   Copyright (C) 2016 Motorola Mobility LLC                              *
+ *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
  *   the Free Software Foundation; either version 2 of the License, or     *
@@ -94,10 +96,14 @@ enum target_endianness {
 	TARGET_BIG_ENDIAN = 1, TARGET_LITTLE_ENDIAN = 2
 };
 
+struct target;
+
 struct working_area {
 	uint32_t address;
 	uint32_t size;
 	bool free;
+	void (*free_cb)(struct target *target, struct working_area *area, void *cb_data);
+	void *free_cb_data;
 	uint8_t *backup;
 	struct working_area **user;
 	struct working_area *next;
@@ -622,6 +628,15 @@ const char *target_reset_mode_name(enum target_reset_mode reset_mode);
  */
 int target_alloc_working_area(struct target *target,
 		uint32_t size, struct working_area **area);
+/*
+ * Same as target_allocate_working_area(), but when the area is freed the callback
+ * provided is called.
+ */
+int target_alloc_working_area_cb(struct target *target,
+		uint32_t size,
+		void (*free_cb)(struct target *target, struct working_area *area, void *cb_data),
+		void *free_cb_data,
+		struct working_area **area);
 /* Same as target_alloc_working_area, except that no error is logged
  * when ERROR_TARGET_RESOURCE_NOT_AVAILABLE is returned.
  *
@@ -630,6 +645,15 @@ int target_alloc_working_area(struct target *target,
  */
 int target_alloc_working_area_try(struct target *target,
 		uint32_t size, struct working_area **area);
+/*
+ * Same as target_alloc_working_area_try(), but when the area is freed the callback
+ * provided is called.
+ */
+int target_alloc_working_area_try_cb(struct target *target,
+		uint32_t size,
+		void (*free_cb)(struct target *target, struct working_area *area, void *cb_data),
+        void *free_cb_data,
+        struct working_area **area);
 int target_free_working_area(struct target *target, struct working_area *area);
 void target_free_all_working_areas(struct target *target);
 uint32_t target_get_working_area_avail(struct target *target);

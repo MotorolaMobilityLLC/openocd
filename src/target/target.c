@@ -23,6 +23,8 @@
  *   Copyright (C) 2011 Andreas Fritiofson                                 *
  *   andreas.fritiofson@gmail.com                                          *
  *                                                                         *
+ *   Copyright (C) 2016 Motorola Mobility LLC                              *
+ *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
  *   the Free Software Foundation; either version 2 of the License, or     *
@@ -1627,7 +1629,10 @@ static void print_wa_layout(struct target *target)
 }
 
 /* Reduce area to size bytes, create a new free area from the remaining bytes, if any. */
-static void target_split_working_area(struct working_area *area, uint32_t size)
+static void target_split_working_area(struct working_area *area,
+                                      uint32_t size,
+                                      void (*free_cb)(struct target *target, struct working_area *area, void *cb_data),
+                                      void *free_cb_data)
 {
 	assert(area->free); /* Shouldn't split an allocated area */
 	assert(size <= area->size); /* Caller should guarantee this */
@@ -1645,6 +1650,8 @@ static void target_split_working_area(struct working_area *area, uint32_t size)
 		new_wa->backup = NULL;
 		new_wa->user = NULL;
 		new_wa->free = true;
+		new_wa->free_cb = free_cb;
+		new_wa->free_cb_data = free_cb_data;
 
 		area->next = new_wa;
 		area->size = size;
@@ -1676,6 +1683,8 @@ static void target_merge_working_areas(struct target *target)
 			c->next = c->next->next;
 			if (to_be_freed->backup)
 				free(to_be_freed->backup);
+			if (to_be_freed->free_cb)
+				to_be_freed->free_cb(target, to_be_freed, to_be_freed->free_cb_data);
 			free(to_be_freed);
 
 			/* If backup memory was allocated to the remaining area, it's has
@@ -1690,7 +1699,11 @@ static void target_merge_working_areas(struct target *target)
 	}
 }
 
-int target_alloc_working_area_try(struct target *target, uint32_t size, struct working_area **area)
+int target_alloc_working_area_try_cb(struct target *target,
+									 uint32_t size,
+									 void (*free_cb)(struct target *target, struct working_area *area, void *cb_data),
+									 void *free_cb_data,
+									 struct working_area **area)
 {
 	/* Reevaluate working area address based on MMU state*/
 	if (target->working_areas == NULL) {
@@ -1734,6 +1747,8 @@ int target_alloc_working_area_try(struct target *target, uint32_t size, struct w
 			new_wa->backup = NULL;
 			new_wa->user = NULL;
 			new_wa->free = true;
+			new_wa->free_cb = NULL;
+			new_wa->free_cb_data = NULL;
 		}
 
 		target->working_areas = new_wa;
@@ -1756,7 +1771,7 @@ int target_alloc_working_area_try(struct target *target, uint32_t size, struct w
 		return ERROR_TARGET_RESOURCE_NOT_AVAILABLE;
 
 	/* Split the working area into the requested size */
-	target_split_working_area(c, size);
+	target_split_working_area(c, size, free_cb, free_cb_data);
 
 	LOG_DEBUG("allocated new working area of %"PRIu32" bytes at address 0x%08"PRIx32, size, c->address);
 
@@ -1784,15 +1799,28 @@ int target_alloc_working_area_try(struct target *target, uint32_t size, struct w
 	return ERROR_OK;
 }
 
-int target_alloc_working_area(struct target *target, uint32_t size, struct working_area **area)
+int target_alloc_working_area_try(struct target *target, uint32_t size, struct working_area **area)
+{
+	return target_alloc_working_area_try_cb(target, size, NULL, NULL, area);
+}
+
+int target_alloc_working_area_cb(struct target *target,
+								 uint32_t size,
+								 void (*free_cb)(struct target *target, struct working_area *area, void *cb_data),
+								 void *free_cb_data,
+								 struct working_area **area)
 {
 	int retval;
 
-	retval = target_alloc_working_area_try(target, size, area);
+	retval = target_alloc_working_area_try_cb(target, size, free_cb, free_cb_data, area);
 	if (retval == ERROR_TARGET_RESOURCE_NOT_AVAILABLE)
 		LOG_WARNING("not enough working area available(requested %"PRIu32")", size);
 	return retval;
+}
 
+int target_alloc_working_area(struct target *target, uint32_t size, struct working_area **area)
+{
+	return target_alloc_working_area_cb(target, size, NULL, NULL, area);
 }
 
 static int target_restore_working_area(struct target *target, struct working_area *area)
