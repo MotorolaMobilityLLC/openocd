@@ -142,7 +142,7 @@ int genspi_flash_erase(struct flash_bank *bank, int first, int last)
 			return retval;
 		}
 		cmd_buf[0] = genspi_info->dev->chip_erase_cmd;
-		retval = genspi_info->fops->spi_send_cmd(bank, cmd_buf, 2, NULL, 0);
+		retval = genspi_info->fops->spi_send_cmd(bank, cmd_buf, 1, NULL, 0);
 		if (retval != ERROR_OK) {
 			LOG_ERROR("Unable to send bulk erase command to flash part.");
 			return retval;
@@ -248,11 +248,12 @@ int genspi_flash_write(struct flash_bank *bank, const uint8_t *buffer,
 		cmd_buf[3] = (offset >> 0) & 0xff;
 
 		/* Send the command and data.   This will trash the contents of buffer. */
-		/* TODO: Verify it is OK to trash the contents of buffer. */
 		chunk = genspi_info->fops->max_data_bytes;
 		if (chunk > genspi_info->dev->pagesize) {
-			chunk = genspi_info->dev->pagesize;
+			/* Make sure chunk does not go past the end of the page. */
+			chunk = genspi_info->dev->pagesize-(offset%genspi_info->dev->pagesize);
 		}
+
 		if (chunk > count) {
 			chunk = count;
 		}
@@ -314,6 +315,7 @@ int genspi_flash_read(struct flash_bank *bank, uint8_t *buffer,
 		if (chunk > count) {
 			chunk = count;
 		}
+
 		/* Send the command and get the response. */
 		memset(&buffer[bytes_copied], 0, chunk);
 		retval = genspi_info->fops->spi_send_cmd(bank, cmd_buf, sizeof(cmd_buf), &buffer[bytes_copied], chunk);
@@ -322,7 +324,7 @@ int genspi_flash_read(struct flash_bank *bank, uint8_t *buffer,
 			return retval;
 		}
 		bytes_copied += chunk;
-		offset += bytes_copied;
+		offset += chunk;
 		count -= chunk;
 	}
 	return ERROR_OK;
@@ -479,6 +481,11 @@ __FLASH_BANK_COMMAND(genspi_flash_bank_command)
 		COMMAND_PARSE_NUMBER(s32, CMD_ARGV[8], genspi_info->gpio_pin);
 		LOG_DEBUG("Flash Chip Select setup with base address: 0x%08x and pin %d",
 		          genspi_info->gpio_base, genspi_info->gpio_pin);
+	}
+	/* Get the watchdog base address if one was specified. */
+	if (CMD_ARGC > 9) {
+		COMMAND_PARSE_NUMBER(u32, CMD_ARGV[9], genspi_info->watchdog_base);
+		LOG_DEBUG("Watchdog setup with base address: 0x%08x.", genspi_info->watchdog_base);
 	}
 
 	return ERROR_OK;

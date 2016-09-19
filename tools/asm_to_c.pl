@@ -32,13 +32,13 @@ my $OBJDUMP="arm-none-eabi-objdump -d";
 my $infile = $ARGV[0];
 if (! -e $infile)
 {
-    die "Unable to open input file $infile.\n";
+	die "Unable to open input file $infile.\n";
 }
 
 my $indent = 4;
 if (defined $ARGV[1])
 {
-    $indent = $ARGV[1];
+	$indent = $ARGV[1];
 }
 
 # Get an array containing the assembly code and object code.
@@ -53,48 +53,56 @@ my $longest_line = 0;
 # Find the longest line for the end comment. */
 foreach my $line (@obj_code_no_tab)
 {
-    if (length $line > $longest_line)
-    {
-        $longest_line = length $line;
-    }
+	if (length $line > $longest_line)
+	{
+		$longest_line = length $line;
+	}
+}
+
+sub add_space
+{
+	my ($spaces) = @_;
+
+	return "\t" x ($spaces/$tabstop) . " " x ($spaces%$tabstop);
 }
 
 sub indent
 {
-    return " " x $indent;
+	return add_space($indent);
 }
 
 my $comment_length = $longest_line;
+
 # Loop through the array parsing the lines.
 print indent() . "{\n";
 foreach my $line (@obj_code_no_tab)
 {
-    # Check for a label line in the form:
-    # 00000000 <flash_wait_busy_1-0xc>:
-    if ($line =~ /[0-9a-fA-F]+\s+\<(?<address>\S+)\>:/)
-    {
-        print indent() . "                               /* $+{address}:" . " " x ($comment_length - length $+{address}) . "*/\n";
-    }
-    # Check for a line with just data in the form:
-    #   64:	000411aa 	.word	0x000411aa
-    elsif ($line =~ /\s*[0-9a-fA-F]:\s+(?<byte_4>[0-9a-fA-F]{2})(?<byte_3>[0-9a-fA-F]{2})(?<byte_2>[0-9a-fA-F]{2})(?<byte_1>[0-9a-fA-F]{2})\s+\.word/)
-    {
-        my $code = $line . " " x ($comment_length - length $line);
-        print indent() . "    0x$+{byte_1}, 0x$+{byte_2}, 0x$+{byte_3}, 0x$+{byte_4},    /* $code */\n";
-    }
-    # Check for a line with double word data in the form:
-    # 2:	f015 4f00 	tst.w	r5, #2147483648	; 0x80000000
-    elsif ($line =~ /\s*[0-9a-fA-F]:\s+(?<byte_2>[0-9a-fA-F]{2})(?<byte_1>[0-9a-fA-F]{2})\s+(?<byte_4>[0-9a-fA-F]{2})(?<byte_3>[0-9a-fA-F]{2})\s+(?<code>.*)/)
-    {
-        my $code = $line . " " x ($comment_length - length $line);
-        print indent() . "    0x$+{byte_1}, 0x$+{byte_2}, 0x$+{byte_3}, 0x$+{byte_4},    /* $code */\n";
-    }
-    # Check for a line with a single word data in the form:
-    # 0:	695d      	ldr	r5, [r3, #20]
-    elsif ($line =~ /\s*[0-9a-fA-F]+:\s+(?<byte_2>[0-9a-fA-F]{2})(?<byte_1>[0-9a-fA-F]{2})\s+(?<code>.*)/)
-    {
-        my $code = $line . " " x ($comment_length - length $line);
-        print indent() . "    0x$+{byte_1}, 0x$+{byte_2},                /* $code */\n";
-    }
+	# Check for a label line in the form:
+	# 00000000 <flash_wait_busy_1-0xc>:
+	if ($line =~ /[0-9a-fA-F]+\s+\<(?<address>\S+)\>:/)
+	{
+		print indent() . add_space(31) . "/* $+{address}:" . " " x ($comment_length - length $+{address}) . "*/\n";
+	}
+	# Check for a line with just data in the form:
+	# 64:	000411aa 	.word	0x000411aa
+	elsif ($line =~ /\s*[0-9a-fA-F]:\s+(?<byte_4>[0-9a-fA-F]{2})(?<byte_3>[0-9a-fA-F]{2})(?<byte_2>[0-9a-fA-F]{2})(?<byte_1>[0-9a-fA-F]{2})\s+\.word/)
+	{
+		my $code = $line . " " x ($comment_length - length $line);
+		print indent() . add_space(4) . "0x$+{byte_1}, 0x$+{byte_2}, 0x$+{byte_3}, 0x$+{byte_4},    /* $code */\n";
+	}
+	# Check for a line with double word data in the form:
+	# 2:	f015 4f00 	tst.w	r5, #2147483648	; 0x80000000
+	elsif ($line =~ /\s*[0-9a-fA-F]:\s+(?<byte_2>[0-9a-fA-F]{2})(?<byte_1>[0-9a-fA-F]{2})\s+(?<byte_4>[0-9a-fA-F]{2})(?<byte_3>[0-9a-fA-F]{2})\s+(?<code>.*)/)
+	{
+		my $code = $line . " " x ($comment_length - length $line);
+		print indent() . add_space(4) . "0x$+{byte_1}, 0x$+{byte_2}, 0x$+{byte_3}, 0x$+{byte_4},    /* $code */\n";
+	}
+	# Check for a line with a single word data in the form:
+	# 0:	695d      	ldr	r5, [r3, #20]
+	elsif ($line =~ /\s*[0-9a-fA-F]+:\s+(?<byte_2>[0-9a-fA-F]{2})(?<byte_1>[0-9a-fA-F]{2})\s+(?<code>.*)/)
+	{
+		my $code = $line . " " x ($comment_length - length $line);
+		print indent() . add_space(4) . "0x$+{byte_1}, 0x$+{byte_2},                /* $code */\n";
+	}
 }
 print indent() . "};\n";
