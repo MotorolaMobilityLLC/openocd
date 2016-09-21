@@ -1,4 +1,3 @@
-
 /***************************************************************************
  *   Copyright (C) 2016 Motorola Mobility LLC                              *
  *                                                                         *
@@ -21,31 +20,31 @@
 #include "spi.h"
 
 struct genspi_flash_bank {
-    int probed;
-    uint32_t bank_num;
-    uint32_t reg_base;
-    uint32_t gpio_base;
-    int32_t gpio_pin;
-    const struct genspi_fops *fops;
-    const struct flash_device *dev;
-    void *driver_priv;
+	int probed;
+	uint32_t bank_num;
+	uint32_t reg_base;
+	uint32_t gpio_base;
+	int32_t gpio_pin;
+	uint32_t watchdog_base;
+	const struct genspi_fops *fops;
+	const struct flash_device *dev;
+	void *driver_priv;
 };
 
 struct genspi_fops {
-    uint32_t max_data_bytes;
-    int (*spi_send_cmd)(struct flash_bank *bank, uint8_t *opcode, size_t cmd_bytes, uint8_t *data, size_t data_bytes);
-    int (*spi_init)(struct flash_bank *bank);
+	uint32_t max_data_bytes;
+	int (*spi_send_cmd)(struct flash_bank *bank, uint8_t *opcode, size_t cmd_bytes, uint8_t *data, size_t data_bytes);
+	int (*spi_init)(struct flash_bank *bank);
 };
 
 int genspi_flash_erase(struct flash_bank *bank, int first, int last);
 int genspi_flash_write(struct flash_bank *bank, const uint8_t *buffer,
-                       uint32_t offset, uint32_t count);
+					   uint32_t offset, uint32_t count);
 int genspi_flash_read(struct flash_bank *bank, uint8_t *buffer,
-				      uint32_t offset, uint32_t count);
+					  uint32_t offset, uint32_t count);
 int genspi_probe(struct flash_bank *bank, const struct genspi_fops *fops);
 int genspi_auto_probe(struct flash_bank *bank, const struct genspi_fops *fops);
 int genspi_flash_erase_check(struct flash_bank *bank);
 int genspi_protect_check(struct flash_bank *bank);
 int genspi_get_info(struct flash_bank *bank, char *buf, int buf_size);
 __FLASH_BANK_COMMAND(genspi_flash_bank_command);
-

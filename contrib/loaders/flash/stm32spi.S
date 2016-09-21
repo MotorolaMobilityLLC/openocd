@@ -52,11 +52,15 @@
 
 #define STM32SPI_DR_OFS       0x0c
 
+#define STM32IWDG_KR_OFS      0x00
+#define STM32IWDG_KR_KEY      0xaaaa
+
 /*
  * Params:
  *   r0 - workarea start
  *   r1 - tx count (bytes)
  *   r2 - SPI Register base address
+ *   r3 - Watchdog base address of zero if none
  * Clobbered:
  *   r4 - rx pointer
  *   r5 - rx count
@@ -67,6 +71,12 @@
 stm32spi_flash:
     cbz     r1,done
 
+    /* Service the watchdog. */
+    cbz     r3,enable_spi
+    ldrh    r6,wdog_key_value
+    strh    r6,[r3,#STM32IWDG_KR_OFS]
+
+enable_spi:
     /* Enable the SPI. */
     ldrh    r6,[r2,#STM32SPI_CR1_OFS]
     orr     r6,r6,#STM32SPI_CR1_SPE
@@ -93,6 +103,12 @@ copy_rx_bytes:
     strbne  r7,[r4],#1
     subne   r5,r5,#1
     b       copy_tx_bytes
+
+    /* Place the constant data before the end so no special processing needs to
+       be done to calculate the address of the bkpt instruction.  For this it
+       needs to be the last instruction. */
+wdog_key_value:
+    .hword   STM32IWDG_KR_KEY
 
 done:
     /* Wait until not busy. */
