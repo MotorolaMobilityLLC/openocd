@@ -1140,7 +1140,7 @@ static int _ftdi_swd_run_queue(void)
 			unsigned int ack = swd_cmd_queue[i].ack;
 			uint32_t data = le_to_h_u32(swd_cmd_queue[i].data);
 
-			LOG_DEBUG("%s %s %s reg %" PRIx8 " = %08" PRIx32,
+			LOG_DEBUG("%s %s %s reg %" PRIx32 " = %08" PRIx32,
 					  ack == SWD_ACK_OK ? "OK" : ack == SWD_ACK_WAIT ? "WAIT" : ack == SWD_ACK_FAULT ? "FAULT" : "JUNK",
 					  swd_cmd_queue[i].cmd & SWD_CMD_APnDP ? "AP" : "DP",
 					  swd_cmd_queue[i].cmd & SWD_CMD_RnW ? "read" : "write",
