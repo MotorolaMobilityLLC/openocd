@@ -1149,9 +1149,10 @@ static int _ftdi_swd_run_queue(void)
 
 			if (ack != SWD_ACK_OK) {
 				queued_retval = ack == SWD_ACK_WAIT ? ERROR_WAIT : ERROR_FAIL;
-				if (ack == SWD_ACK_WAIT)
+				if (ack == SWD_ACK_WAIT) {
 					ftdi_wait_encountered();
 					ftdi_replay_queue(i);
+				}
 				goto skip;
 
 			} else if (swd_cmd_queue[i].cmd & SWD_CMD_RnW) {
